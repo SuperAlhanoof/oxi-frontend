@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Network Devices Admin Console</title>
+    <link rel="icon" href="{{ url_for('static', filename='ico.png') }}" type="image/x-icon">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/utc.js"></script>
@@ -86,6 +87,51 @@
         });
     </script>
     <style>
+        .ok, .fail, .warn {
+            font-weight: normal;
+            background: none;
+            border: none;
+            padding: 0;
+            margin: 0;
+            display: inline;
+        }
+
+        .ok {
+            color: green;
+        }
+
+        .fail {
+            color: red;
+        }
+
+        .warn {
+            color: orange;
+        }
+        .action-button {
+            border: 1px solid #ccc;
+            background-color: #f8f9fa;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+        .action-button:hover {
+            background-color: #e2e6ea;
+        }
+        .table-icon-button {
+            display: inline-block;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 4px 8px;
+            background-color: #f8f9fa;
+            text-decoration: none;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+        .table-icon-button:hover {
+            background-color: #e2e6ea;
+        }
         html, body {
             height: 100%; margin: 0; padding: 0;
             background-image: url('{{ url_for("static", filename="background.jpg") }}');
@@ -112,7 +158,7 @@
         .orange { background-color: #f26721; } .blue { background-color: #266fc0; } .gray { background-color: #7f7f7f; }
         .ok { color: green; } .fail { color: red; }
 
-        table { border-collapse: collapse; width: 100%; background: white; border-radius: 6px; overflow: hidden; }
+        table { border-collapse: collapse; width: 100%; background: white; border-radius: 6px; overflow: hidden; margin-bottom: 40px; }
         th { background-color: #266fc0; color: white; padding: 10px; }
         td { border: 1px solid #ccc; padding: 8px; text-align: center; }
 
@@ -135,33 +181,67 @@
             <h2 style="margin: 0;">Network Devices Admin Console</h2>
         </div>
 
+        {% if show_reset_banner %}
+        <div class="announcement">
+            🔔 It's the start of a new month! Remember to reset old backups — keeping only the latest config per month for each device — to maintain a clean system.<br>
+            ⏳ Please reset backups after <strong>{{ days_left }}</strong> day{{ 's' if days_left != 1 else '' }} to ensure continued system efficiency.
+        </div>
+        {% endif %}
+
         <div class='button-bar'>
             <a href='#' id='refresh' class='button-link blue'>🔃 Refresh Dashboard</a>
             <a href='#' id='reload' class='button-link blue'>🔁 Reload Devices</a>
-            <a href='#' id='add-device-btn' class='button-link gray'>➕ Add Device</a>
+            <a href='#' id='add-device-btn' class='button-link blue'>➕ Add Device</a>
             <a href='/reset_backups' id='reset-btn' class='button-link orange'>🛑🗑️ Reset Backups</a>
         </div>
+
+        {% if issue_devices %}
+        <h3>🔴 Devices with Issues (Missing Backups or No Connection)</h3>
+        <table>
+            <tr><th>Device</th><th>IP</th><th>Status</th><th>Note</th></tr>
+            {% for d in issue_devices %}
+            <tr>
+                <td>{{ d.name }}</td>
+                <td>{{ d.ip }}</td>
+                <td>
+                    <span class="{% if d.status == 'success' %}ok{% elif d.status == 'no_connection' %}fail{% else %}warn{% endif %}">
+                        {% if d.status == 'success' %}🟢{% elif d.status == 'no_connection' %}🔴{% else %}🟡{% endif %} {{ d.status }}
+                    </span>
+                </td>
+                <td>{{ d.note }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% endif %}
 
         <div id="flashMessage" class="hidden"></div>
 
         {% if devices %}
         <table>
-            <tr><th>Device</th><th>IP</th><th>Last Config Time (UTC / AST)</th><th>View</th><th>Fetch</th><th>Logs</th><th>Action</th></tr>
+            <tr><th>Device</th><th>IP</th><th>Connection Status</th><th>Last Config Time (UTC / AST)</th><th>View</th><th>Fetch</th><th>Logs</th><th>Action</th></tr>
             {% for d in devices %}
             <tr>
                 <td>{{ d.name }}</td>
                 <td>{{ d.ip }}</td>
-                <td class='time {{ d.status_class }}' epoch='{{ d.epoch }}'>{{ d.last_config or '❌' }}</td>
-                <td><a href='/view/{{ d.name }}'>🗒️</a></td>
-                <td><a href='/fetch/{{ d.name }}'>🔄</a></td>
-                <td><a href='/logs/{{ d.name }}'>🗄️</a></td>
                 <td>
-                    <button class="edit-button"
+                    <span class="{% if d.status == 'success' %}ok{% elif d.status == 'no_connection' %}fail{% else %}warn{% endif %}">
+                        {% if d.status == 'success' %}🟢{% elif d.status == 'no_connection' %}🔴{% else %}🟡{% endif %} {{ d.status }}
+                    </span>
+                </td>
+                <td class="time" epoch="{{ d.epoch }}">{{ d.last_config or '❌' }}</td>
+                <td><a href='/view/{{ d.name }}' class='table-icon-button'>🗒️</a></td>
+                <td><a href='/fetch/{{ d.name }}' class='table-icon-button'>🔄</a></td>
+                <td><a href='/logs/{{ d.name }}' class='table-icon-button'>🗄️</a></td>
+                <td>
+                    <button class="edit-button action-button"
                         data-name="{{ d.name|e }}"
                         data-ip="{{ d.ip|e }}"
                         data-model="{{ d.model|e }}"
                         data-user="{{ d.user|e }}"
                         data-password="{{ d.password|e }}">✏️</button>
+                    <form method="POST" action="/delete_device/{{ d.name }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete {{ d.name }}?');">
+                        <button type="submit" class="action-button">🗑️</button>
+                    </form>
                 </td>
             </tr>
             {% endfor %}
