@@ -3,6 +3,8 @@ import os
 import requests
 from datetime import datetime
 import calendar
+import shutil
+
 
 app = Flask(__name__)
 app.static_folder = 'static'
@@ -114,6 +116,10 @@ def dashboard():
         })
 
     models = [f[:-3] for f in os.listdir(MODEL_PATH) if f.endswith('.rb')]
+    
+    # Check disk usage
+    total, used, free = shutil.disk_usage("/")
+    disk_full = free < 100 * 1024 * 1024  # Less than 100 MB
 
     return render_template(
         "dashboard.html",
@@ -121,7 +127,8 @@ def dashboard():
         issue_devices=issue_devices,
         days_left=days_left,
         models=models,
-        show_reset_banner=show_reset_banner
+        show_reset_banner=show_reset_banner,
+        disk_full=disk_full
     )
 
 @app.route("/fetch/<device>")

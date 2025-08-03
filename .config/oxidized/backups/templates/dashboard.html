@@ -180,7 +180,12 @@
             <img src='{{ url_for("static", filename="lab7-logo-osg.png") }}' alt='Logo' style='height: 120px;'>
             <h2 style="margin: 0;">Network Devices Admin Console</h2>
         </div>
-
+        {% if disk_full %}
+        <div class="announcement" style="background-color: #ffdddd; border-left: 6px solid red; color: #a10000;">
+            ⚠️ <strong>Critical Warning:</strong> The server has run out of disk space.<br>
+                <strong>Backups cannot be saved</strong> until space is freed. Click on the "Reset Backups" button to delete old backups and free up space.<br>
+        </div>
+        {% endif %}
         {% if show_reset_banner %}
         <div class="announcement">
             🔔 It's the start of a new month! Remember to reset old backups — keeping only the latest config per month for each device — to maintain a clean system.<br>
@@ -192,7 +197,7 @@
             <a href='#' id='refresh' class='button-link blue'>🔃 Refresh Dashboard</a>
             <a href='#' id='reload' class='button-link blue'>🔁 Reload Devices</a>
             <a href='#' id='add-device-btn' class='button-link blue'>➕ Add Device</a>
-            <a href='/reset_backups' id='reset-btn' class='button-link orange'>🛑🗑️ Reset Backups</a>
+            <a href='/reset_backups' id='reset-btn' class='button-link orange'>{% if disk_full %}🛑{% endif %}🗑️ Reset Backups</a>
         </div>
 
         {% if issue_devices %}
