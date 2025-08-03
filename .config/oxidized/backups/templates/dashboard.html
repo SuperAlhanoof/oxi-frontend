@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Network Devices Admin Console</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/utc.js"></script>
+    <script>
+        dayjs.extend(window.dayjs_plugin_utc);
+
+        function convertTime() {
+            $('.time').each(function() {
+                var content = $(this).text();
+                if (content === 'never' || content === 'unknown' || content === '') return;
+                var epoch = $(this).attr('epoch');
+                if (epoch === undefined) return;
+
+                var utcTime = Number(epoch);
+                var djUTC = dayjs.unix(utcTime).utc();
+                var djKSA = djUTC.add(3, 'hour');
+
+                var formatted = `${djUTC.format('YYYY-MM-DD HH:mm:ss')} UTC / ${djKSA.format('HH:mm:ss')} AST`;
+                $(this).text(formatted);
+                $(this).attr('title', djKSA.format('YYYY-MM-DD HH:mm:ss') + ' AST');
+            });
+        }
+
+        $(function() {
+            convertTime();
+
+            $('#reset-btn').click(function(e) {
+                e.preventDefault();
+                const confirmed = confirm("Are you sure you want to reset backups? This will delete all but the latest config per month for each device.");
+                if (confirmed) window.location.href = $(this).attr('href');
+            });
+
+            $('#refresh').click(function(e) {
+                e.preventDefault();
+                location.reload();
+            });
+
+            $('#reload').click(function(e) {
+                e.preventDefault();
+                $.get('/reload_nodes')
+                .done(function(data) {
+                    $('#flashMessage').removeClass('alert-danger hidden').addClass('alert-success').text(data);
+                })
+                .fail(function() {
+                    $('#flashMessage').removeClass('alert-success hidden').addClass('alert-danger').text('Unable to reload nodes');
+                })
+                .always(function() {
+                    $('#flashMessage').removeClass('hidden');
+                });
+            });
+
+            $('#add-device-btn').click(function() {
+                $('#addDeviceModal').show();
+            });
+
+            $('#closeDeviceModal').click(function() {
+                $('#addDeviceModal').hide();
+            });
+
+            $('#closeEditModal').click(function() {
+                $('#editDeviceModal').hide();
+            });
+
+            $(document).on("click", ".edit-button", function () {
+                $('#edit-original').val($(this).data("name"));
+                $('#edit-name').val($(this).data("name"));
+                $('#edit-ip').val($(this).data("ip"));
+                $('#edit-user').val($(this).data("user"));
+                $('#edit-password').val($(this).data("password"));
+
+                const model = $(this).data("model");
+                const modelSelect = $('#edit-model');
+
+                if (modelSelect.find(`option[value="${model}"]`).length > 0) {
+                    modelSelect.val(model);
+                } else {
+                    modelSelect.prepend(`<option value="${model}" selected>${model}</option>`);
+                }
+
+                $('#editDeviceModal').show();
+            });
+        });
+    </script>
+    <style>
+        html, body {
+            height: 100%; margin: 0; padding: 0;
+            background-image: url('{{ url_for("static", filename="background.jpg") }}');
+            background-size: cover; background-position: center; background-attachment: fixed;
+            font-family: Arial, sans-serif; color: #333;
+        }
+
+        body {
+            display: flex; justify-content: center; align-items: flex-start;
+            min-height: 100vh; padding: 40px 0;
+        }
+
+        .ribbon-container {
+            width: 100%; max-width: 1200px;
+            background-color: rgba(255,255,255,0.95);
+            padding: 30px 60px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            border-radius: 12px;
+        }
+
+        .announcement { background: #fff3cd; color: #856404; padding: 10px; border: 1px solid #ffeeba; border-radius: 5px; margin-bottom: 15px; }
+        .button-bar { display: flex; gap: 10px; margin-bottom: 20px; }
+        .button-link { display: inline-block; padding: 10px 15px; border-radius: 5px; color: white; text-decoration: none; font-weight: bold; }
+        .orange { background-color: #f26721; } .blue { background-color: #266fc0; } .gray { background-color: #7f7f7f; }
+        .ok { color: green; } .fail { color: red; }
+
+        table { border-collapse: collapse; width: 100%; background: white; border-radius: 6px; overflow: hidden; }
+        th { background-color: #266fc0; color: white; padding: 10px; }
+        td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+
+        .hidden { display: none; }
+        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; padding: 10px; border-radius: 5px; }
+        .alert-danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 10px; border-radius: 5px; }
+
+        #addDeviceModal, #editDeviceModal {
+            display: none; position: fixed; top: 10%; left: 50%; transform: translate(-50%, 0);
+            background: white; border: 1px solid #ccc; border-radius: 8px;
+            padding: 20px; z-index: 1000; box-shadow: 0 0 20px rgba(0,0,0,0.4);
+        }
+    </style>
+</head>
+<body>
+<div class="ribbon-container">
+    <div class="content-wrapper">
+        <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 20px;">
+            <img src='{{ url_for("static", filename="lab7-logo-osg.png") }}' alt='Logo' style='height: 120px;'>
+            <h2 style="margin: 0;">Network Devices Admin Console</h2>
+        </div>
+
+        <div class='button-bar'>
+            <a href='#' id='refresh' class='button-link blue'>🔃 Refresh Dashboard</a>
+            <a href='#' id='reload' class='button-link blue'>🔁 Reload Devices</a>
+            <a href='#' id='add-device-btn' class='button-link gray'>➕ Add Device</a>
+            <a href='/reset_backups' id='reset-btn' class='button-link orange'>🛑🗑️ Reset Backups</a>
+        </div>
+
+        <div id="flashMessage" class="hidden"></div>
+
+        {% if devices %}
+        <table>
+            <tr><th>Device</th><th>IP</th><th>Last Config Time (UTC / AST)</th><th>View</th><th>Fetch</th><th>Logs</th><th>Action</th></tr>
+            {% for d in devices %}
+            <tr>
+                <td>{{ d.name }}</td>
+                <td>{{ d.ip }}</td>
+                <td class='time {{ d.status_class }}' epoch='{{ d.epoch }}'>{{ d.last_config or '❌' }}</td>
+                <td><a href='/view/{{ d.name }}'>🗒️</a></td>
+                <td><a href='/fetch/{{ d.name }}'>🔄</a></td>
+                <td><a href='/logs/{{ d.name }}'>🗄️</a></td>
+                <td>
+                    <button class="edit-button"
+                        data-name="{{ d.name|e }}"
+                        data-ip="{{ d.ip|e }}"
+                        data-model="{{ d.model|e }}"
+                        data-user="{{ d.user|e }}"
+                        data-password="{{ d.password|e }}">✏️</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p style='color: gray;'>No devices found. Please check Oxidized API or backup folders.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div id="addDeviceModal">
+    <h3>Add New Device</h3>
+    <form method="POST" action="/add_device">
+        <label>Device Name: <input type="text" name="device" required></label><br>
+        <label>IP Address: <input type="text" name="ip" required></label><br>
+        <label>Model:
+            <select name="model">
+                {% for model in models %}<option value="{{ model }}">{{ model }}</option>{% endfor %}
+            </select>
+        </label><br>
+        <label>Username: <input type="text" name="user"></label><br>
+        <label>Password: <input type="text" name="password"></label><br>
+        <button type="submit">➕ Add</button>
+        <button type="button" id="closeDeviceModal">❌ Cancel</button>
+    </form>
+</div>
+
+<div id="editDeviceModal">
+    <h3>Edit Device</h3>
+    <form method="POST" action="/edit_device">
+        <input type="hidden" name="original_name" id="edit-original">
+        <label>Device Name: <input type="text" name="device" id="edit-name" required></label><br>
+        <label>IP Address: <input type="text" name="ip" id="edit-ip" required></label><br>
+        <label>Model:
+            <select name="model" id="edit-model">
+                {% for model in models %}<option value="{{ model }}">{{ model }}</option>{% endfor %}
+            </select>
+        </label><br>
+        <label>Username: <input type="text" name="user" id="edit-user"></label><br>
+        <label>Password: <input type="text" name="password" id="edit-password"></label><br>
+        <button type="submit">💾 Save</button>
+        <button type="button" id="closeEditModal">❌ Cancel</button>
+    </form>
+</div>
+</body>
+</html>
