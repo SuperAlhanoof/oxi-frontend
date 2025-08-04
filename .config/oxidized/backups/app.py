@@ -17,7 +17,22 @@ MODEL_PATH = "/home/oxidized/.rbenv/versions/3.2.2/lib/ruby/gems/3.2.0/gems/oxid
 @app.route("/")
 def dashboard():
     now = datetime.now()
-    show_reset_banner = now.day <= 3
+
+    # For testing only — simulate a different date
+    # Simulate a start-of-month date (e.g., 2nd)
+    # now = datetime(datetime.now().year, datetime.now().month, 2)
+
+    # Simulate an end-of-month date (e.g., 28th)
+    # now = datetime(datetime.now().year, datetime.now().month, 28)
+
+    devices = []
+    issue_devices = []
+    today_str = now.strftime("%Y-%m-%d")
+    last_day = calendar.monthrange(now.year, now.month)[1]
+    days_left = (datetime(now.year, now.month, last_day) - now).days
+
+    show_reset_banner_start = now.day <= 3
+    show_reset_banner_end = now.day > 15
 
     try:
         res = requests.get(f"{OXIDIZED_API}/nodes.json")
@@ -43,12 +58,7 @@ def dashboard():
                         "password": password
                     }
 
-    devices = []
-    issue_devices = []
-    today_str = now.strftime("%Y-%m-%d")
-    last_day = calendar.monthrange(now.year, now.month)[1]
-    days_left = (datetime(now.year, now.month, last_day) - now).days
-
+    
     for node in nodes:
         name = node['name']
         meta = device_meta.get(name, {})
@@ -90,14 +100,9 @@ def dashboard():
             if last_config_date != today_str:
                 note = "No configuration file generated today"
                 issue = True
-        else:
-            if status == "no_connection":
+            elif status == "no_connection":
                 note = "Device unreachable (Oxidized status: no_connection)"
-            elif status == "never":
-                note = "Device never fetched"
-            else:
-                note = "No configuration file generated yet"
-            issue = True
+                issue = True
 
         if issue:
             issue_devices.append({"name": name, "ip": ip, "status": status, "note": note})
@@ -127,7 +132,8 @@ def dashboard():
         issue_devices=issue_devices,
         days_left=days_left,
         models=models,
-        show_reset_banner=show_reset_banner,
+        show_reset_banner_start=show_reset_banner_start,
+        show_reset_banner_end=show_reset_banner_end,
         disk_full=disk_full
     )
 
