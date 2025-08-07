@@ -5,7 +5,6 @@ from datetime import datetime
 import calendar
 import shutil
 
-#test alhanoof locally 
 app = Flask(__name__)
 app.static_folder = 'static'
 app.secret_key = 'S3cReT_K3Y_123!@#'
@@ -123,6 +122,7 @@ def dashboard():
     models = [f[:-3] for f in os.listdir(MODEL_PATH) if f.endswith('.rb')]
     
     # Check disk usage
+    # total, used, free = (1, 1, 50 * 1024 * 1024)  # Simulate only 50MB fre
     total, used, free = shutil.disk_usage("/")
     disk_full = free < 100 * 1024 * 1024  # Less than 100 MB
 
